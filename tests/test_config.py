@@ -65,6 +65,16 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual("memory", config.location)
         self.clear_environment()
 
+    def test_blank_env_location_override_is_ignored(self):
+        for blank in ("", "  ", "\t\n"):
+            os.environ["SPECTATOR_OUTPUT_LOCATION"] = blank
+            self.assertEqual("udp", Config().location)
+            self.assertEqual("memory", Config("memory").location)
+
+    def test_env_location_override_is_stripped(self):
+        os.environ["SPECTATOR_OUTPUT_LOCATION"] = " memory "
+        self.assertEqual("memory", Config().location)
+
     def test_invalid_env_location_override(self):
         os.environ["SPECTATOR_OUTPUT_LOCATION"] = "invalid"
         self.assertRaises(ValueError, Config)

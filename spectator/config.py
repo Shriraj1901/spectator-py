@@ -28,7 +28,8 @@ class Config:
       * `unix:///path/to/file` - Write metrics to a Unix Domain Socket.
 
     The output location can be overridden by configuring an environment variable `SPECTATOR_OUTPUT_LOCATION`
-    with one of the values listed above. Overriding the output location may be useful for integration testing.
+    with one of the values listed above, and a blank value is ignored. Overriding the output location may be
+    useful for integration testing.
 
     The `buffer_size` is used to configure an optional `LineBuffer`, which caches protocol lines locally, before
     flushing them to `spectatord`. Flushes occur under two conditions: (1) the buffer size is exceeded, or (2)
@@ -73,8 +74,9 @@ class Config:
         if not self.is_valid_output_location(location):
             raise ValueError(f"spectatord output location is invalid: {location}")
 
-        override = environ.get("SPECTATOR_OUTPUT_LOCATION")
-        if override is not None:
+        # like the common tag variables, a blank value is treated as unset
+        override = environ.get("SPECTATOR_OUTPUT_LOCATION", "").strip()
+        if override:
             if not self.is_valid_output_location(override):
                 raise ValueError(f"SPECTATOR_OUTPUT_LOCATION is invalid: {override}")
             location = override
