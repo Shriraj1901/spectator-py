@@ -9,7 +9,11 @@ from spectator.config import Config
 from spectator.writer import Writer
 from spectator.writer.line_buffer import LineBuffer
 
-InetFamily: TypeAlias = tuple[str | None, int | None]
+# the address of the local SpectatorD UDP listener, which is also what the "udp" location means
+DEFAULT_UDP_HOST = "127.0.0.1"
+DEFAULT_UDP_PORT = 1234
+
+InetFamily: TypeAlias = tuple[str, int]
 UnixFamily: TypeAlias = str
 SocketAddress: TypeAlias = InetFamily | UnixFamily
 
@@ -54,12 +58,22 @@ class SocketWriter(Writer):
 
     def _init_udp(self, location: str):
         parsed = urlparse(location)
-        self._address: SocketAddress = (parsed.hostname, parsed.port)
+        # a missing host or port would make every write fail with a TypeError, so fall back
+        # to the SpectatorD defaults, which are what the plain "udp" location resolves to
+        host = parsed.hostname
+        port = parsed.port
+        if host is None or port is None:
+            host = host if host is not None else DEFAULT_UDP_HOST
+            port = port if port is not None else DEFAULT_UDP_PORT
+            self._logger.warning(
+                "udp output location %s has no host or port; using %s:%s",
+                location,
+                host,
+                port,
+            )
+        self._address: SocketAddress = (host, port)
         try:
-            if (
-                self._address[0] is not None
-                and type(ip_address(self._address[0])) is IPv6Address
-            ):
+            if type(ip_address(host)) is IPv6Address:
                 self._family = socket.AF_INET6
             else:
                 self._family = socket.AF_INET

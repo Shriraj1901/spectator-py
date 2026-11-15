@@ -19,6 +19,32 @@ class SocketWriterUdpTest(unittest.TestCase):
             w.write("bar")
             self.assertEqual("bar", server.read())
 
+    def test_udp_location_without_port_uses_default_port(self) -> None:
+        with closing(SocketWriter(Config("udp://localhost"))) as w:
+            self.assertEqual(("localhost", 1234), w._address)
+            # an instrumentation call must not raise
+            w.write("foo")
+
+    def test_udp_location_without_host_uses_default_host(self) -> None:
+        with closing(SocketWriter(Config("udp://:4321"))) as w:
+            self.assertEqual(("127.0.0.1", 4321), w._address)
+            w.write("foo")
+
+    def test_udp_location_without_host_and_port_uses_defaults(self) -> None:
+        with closing(SocketWriter(Config("udp://"))) as w:
+            self.assertEqual(("127.0.0.1", 1234), w._address)
+            w.write("foo")
+
+    def test_udp_location_without_port_delivers_to_default_port(self) -> None:
+        with closing(UdpServer()) as server:
+            port = int(server.address().rsplit(":", 1)[1])
+            with (
+                patch("spectator.writer.socket_writer.DEFAULT_UDP_PORT", port),
+                closing(SocketWriter(Config("udp://127.0.0.1"))) as w,
+            ):
+                w.write("foo")
+                self.assertEqual("foo", server.read())
+
     def test_udp_with_buffer(self) -> None:
         with (
             closing(UdpServer()) as server,
